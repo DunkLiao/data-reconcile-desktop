@@ -7,6 +7,8 @@ use crate::models::difference::{Difference, DifferenceType, KeyValue};
 pub struct CompareSettings {
     pub trim_whitespace: bool,
     pub ignore_case: bool,
+    /// `None` disables numeric tolerance entirely.
+    pub numeric_tolerance: Option<f64>,
 }
 
 pub fn normalize(value: &str, settings: CompareSettings) -> String {
@@ -18,6 +20,39 @@ pub fn normalize(value: &str, settings: CompareSettings) -> String {
         s = s.to_lowercase();
     }
     s
+}
+
+/// Parse a value as a finite number, accepting an optional thousands separator
+/// (comma) and surrounding whitespace. Returns `None` for anything else.
+pub fn parse_numeric(value: &str) -> Option<f64> {
+    let cleaned: String = value.trim().chars().filter(|c| *c != ',').collect();
+    if cleaned.is_empty() {
+        return None;
+    }
+    match cleaned.parse::<f64>() {
+        Ok(n) if n.is_finite() => Some(n),
+        _ => None,
+    }
+}
+
+/// Decide whether two raw cell values are considered equal.
+///
+/// String equality (after optional normalization) always wins. When a numeric
+/// tolerance is configured and both sides parse as finite numbers, an absolute
+/// difference within the tolerance is treated as equal. Non-numeric pairs fall
+/// back to string comparison.
+pub fn values_equal(a: &str, b: &str, settings: CompareSettings) -> bool {
+    let na = normalize(a, settings);
+    let nb = normalize(b, settings);
+    if na == nb {
+        return true;
+    }
+    if let Some(tolerance) = settings.numeric_tolerance {
+        if let (Some(x), Some(y)) = (parse_numeric(&na), parse_numeric(&nb)) {
+            return (x - y).abs() <= tolerance;
+        }
+    }
+    false
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

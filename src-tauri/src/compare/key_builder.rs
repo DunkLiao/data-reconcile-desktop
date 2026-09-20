@@ -86,5 +86,6 @@ pub fn settings_from(opts: &CompareOptions) -> CompareSettings {
     CompareSettings {
         trim_whitespace: opts.trim_whitespace,
         ignore_case: opts.ignore_case,
+        numeric_tolerance: opts.numeric_tolerance,
     }
 }

@@ -69,6 +69,7 @@ fn opts(
         excluded_columns: excluded.into_iter().map(|s| s.to_string()).collect(),
         trim_whitespace: false,
         ignore_case: false,
+        numeric_tolerance: None,
     }
 }
 
@@ -782,6 +783,221 @@ fn test_auto_detection() {
     assert!(result.identical);
     assert_eq!(result.file_a_delimiter, "Semicolon (;)");
     assert_eq!(result.file_b_delimiter, "Pipe (|)");
+
+    let _ = std::fs::remove_file(&a);
+    let _ = std::fs::remove_file(&b);
+}
+
+#[test]
+fn test_numeric_tolerance_off() {
+    let a = tmp_path("nt_off_a.csv");
+    let b = tmp_path("nt_off_b.csv");
+    write_utf8(&a, "ID,Amount\n001,1000\n");
+    write_utf8(&b, "ID,Amount\n001,1000.4\n");
+
+    let cancel = AtomicBool::new(false);
+    let progress = |_p: u64, _t: Option<u64>, _s: &str| {};
+    let options = opts(
+        &a,
+        &b,
+        EncodingOption::Utf8,
+        EncodingOption::Utf8,
+        DelimiterOption::Comma,
+        DelimiterOption::Comma,
+        ComparisonMode::KeyBased,
+        vec!["ID"],
+        vec![],
+    );
+
+    let result = compare_key_based(&options, &cancel, &progress).unwrap();
+    assert_eq!(result.different_records, 1);
+    assert_eq!(result.different_cells, 1);
+    assert!(!result.identical);
+
+    let _ = std::fs::remove_file(&a);
+    let _ = std::fs::remove_file(&b);
+}
+
+#[test]
+fn test_numeric_tolerance_within() {
+    let a = tmp_path("nt_within_a.csv");
+    let b = tmp_path("nt_within_b.csv");
+    write_utf8(&a, "ID,Amount\n001,1000\n");
+    write_utf8(&b, "ID,Amount\n001,1000.4\n");
+
+    let cancel = AtomicBool::new(false);
+    let progress = |_p: u64, _t: Option<u64>, _s: &str| {};
+    let mut options = opts(
+        &a,
+        &b,
+        EncodingOption::Utf8,
+        EncodingOption::Utf8,
+        DelimiterOption::Comma,
+        DelimiterOption::Comma,
+        ComparisonMode::KeyBased,
+        vec!["ID"],
+        vec![],
+    );
+    options.numeric_tolerance = Some(0.5);
+
+    let result = compare_key_based(&options, &cancel, &progress).unwrap();
+    assert_eq!(result.same_records, 1);
+    assert_eq!(result.different_records, 0);
+    assert!(result.identical);
+    assert_eq!(result.numeric_tolerance, Some(0.5));
+
+    let _ = std::fs::remove_file(&a);
+    let _ = std::fs::remove_file(&b);
+}
+
+#[test]
+fn test_numeric_tolerance_boundary_inclusive() {
+    let a = tmp_path("nt_bound_a.csv");
+    let b = tmp_path("nt_bound_b.csv");
+    write_utf8(&a, "ID,Amount\n001,1000\n");
+    write_utf8(&b, "ID,Amount\n001,1000.5\n");
+
+    let cancel = AtomicBool::new(false);
+    let progress = |_p: u64, _t: Option<u64>, _s: &str| {};
+    let mut options = opts(
+        &a,
+        &b,
+        EncodingOption::Utf8,
+        EncodingOption::Utf8,
+        DelimiterOption::Comma,
+        DelimiterOption::Comma,
+        ComparisonMode::KeyBased,
+        vec!["ID"],
+        vec![],
+    );
+    options.numeric_tolerance = Some(0.5);
+
+    let result = compare_key_based(&options, &cancel, &progress).unwrap();
+    assert_eq!(result.same_records, 1);
+    assert!(result.identical);
+
+    let _ = std::fs::remove_file(&a);
+    let _ = std::fs::remove_file(&b);
+}
+
+#[test]
+fn test_numeric_tolerance_zero_normalizes_format() {
+    let a = tmp_path("nt_zero_a.csv");
+    let b = tmp_path("nt_zero_b.csv");
+    write_utf8(&a, "ID,Amount\n001,00123\n002,\"1,000\"\n003,-5.0\n");
+    write_utf8(&b, "ID,Amount\n001,123\n002,1000\n003,-5\n");
+
+    let cancel = AtomicBool::new(false);
+    let progress = |_p: u64, _t: Option<u64>, _s: &str| {};
+    let mut options = opts(
+        &a,
+        &b,
+        EncodingOption::Utf8,
+        EncodingOption::Utf8,
+        DelimiterOption::Comma,
+        DelimiterOption::Comma,
+        ComparisonMode::KeyBased,
+        vec!["ID"],
+        vec![],
+    );
+    options.numeric_tolerance = Some(0.0);
+
+    let result = compare_key_based(&options, &cancel, &progress).unwrap();
+    assert_eq!(result.same_records, 3);
+    assert!(result.identical);
+
+    let _ = std::fs::remove_file(&a);
+    let _ = std::fs::remove_file(&b);
+}
+
+#[test]
+fn test_numeric_tolerance_non_numeric_fallback() {
+    let a = tmp_path("nt_text_a.csv");
+    let b = tmp_path("nt_text_b.csv");
+    write_utf8(&a, "ID,Val\n001,ABC\n");
+    write_utf8(&b, "ID,Val\n001,ABD\n");
+
+    let cancel = AtomicBool::new(false);
+    let progress = |_p: u64, _t: Option<u64>, _s: &str| {};
+    let mut options = opts(
+        &a,
+        &b,
+        EncodingOption::Utf8,
+        EncodingOption::Utf8,
+        DelimiterOption::Comma,
+        DelimiterOption::Comma,
+        ComparisonMode::KeyBased,
+        vec!["ID"],
+        vec![],
+    );
+    options.numeric_tolerance = Some(1000.0);
+
+    let result = compare_key_based(&options, &cancel, &progress).unwrap();
+    assert_eq!(result.different_records, 1);
+    assert!(!result.identical);
+
+    let _ = std::fs::remove_file(&a);
+    let _ = std::fs::remove_file(&b);
+}
+
+#[test]
+fn test_numeric_tolerance_key_still_strict() {
+    let a = tmp_path("nt_key_a.csv");
+    let b = tmp_path("nt_key_b.csv");
+    // Keys 001 and 1 must not pair even with a tolerance configured.
+    write_utf8(&a, "ID,Amount\n001,1000\n");
+    write_utf8(&b, "ID,Amount\n1,1000\n");
+
+    let cancel = AtomicBool::new(false);
+    let progress = |_p: u64, _t: Option<u64>, _s: &str| {};
+    let mut options = opts(
+        &a,
+        &b,
+        EncodingOption::Utf8,
+        EncodingOption::Utf8,
+        DelimiterOption::Comma,
+        DelimiterOption::Comma,
+        ComparisonMode::KeyBased,
+        vec!["ID"],
+        vec![],
+    );
+    options.numeric_tolerance = Some(1000.0);
+
+    let result = compare_key_based(&options, &cancel, &progress).unwrap();
+    assert_eq!(result.same_records, 0);
+    assert_eq!(result.a_only_records, 1);
+    assert_eq!(result.b_only_records, 1);
+
+    let _ = std::fs::remove_file(&a);
+    let _ = std::fs::remove_file(&b);
+}
+
+#[test]
+fn test_numeric_tolerance_row_by_row() {
+    let a = tmp_path("nt_row_a.csv");
+    let b = tmp_path("nt_row_b.csv");
+    write_utf8(&a, "Amount\n1000\n2000\n");
+    write_utf8(&b, "Amount\n1000.4\n2000.4\n");
+
+    let cancel = AtomicBool::new(false);
+    let progress = |_p: u64, _t: Option<u64>, _s: &str| {};
+    let mut options = opts(
+        &a,
+        &b,
+        EncodingOption::Utf8,
+        EncodingOption::Utf8,
+        DelimiterOption::Comma,
+        DelimiterOption::Comma,
+        ComparisonMode::RowByRow,
+        vec![],
+        vec![],
+    );
+    options.numeric_tolerance = Some(0.5);
+
+    let result = compare_row_by_row(&options, &cancel, &progress).unwrap();
+    assert_eq!(result.same_records, 2);
+    assert_eq!(result.different_records, 0);
+    assert!(result.identical);
 
     let _ = std::fs::remove_file(&a);
     let _ = std::fs::remove_file(&b);

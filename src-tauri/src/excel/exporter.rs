@@ -75,6 +75,7 @@ fn write_summary(workbook: &mut Workbook, result: &CompareResult) -> Result<(), 
         ),
         ("Rows A", format_number(result.rows_a)),
         ("Rows B", format_number(result.rows_b)),
+        ("Numeric Tolerance", format_tolerance(result.numeric_tolerance)),
         ("Matched Records", format_number(result.matched_records)),
         ("Same Records", format_number(result.same_records)),
         ("Different Records", format_number(result.different_records)),
@@ -365,6 +366,13 @@ fn write_duplicate_keys(workbook: &mut Workbook, result: &CompareResult) -> Resu
     ws.set_freeze_panes(1, 0)
         .map_err(|_| AppError::ExportError)?;
     Ok(())
+}
+
+fn format_tolerance(tolerance: Option<f64>) -> String {
+    match tolerance {
+        Some(t) => format!("≤ {t}"),
+        None => "Off".to_string(),
+    }
 }
 
 fn format_number(n: u64) -> String {

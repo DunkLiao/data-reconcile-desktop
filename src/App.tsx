@@ -22,6 +22,7 @@ function App() {
   const [excludedSearch, setExcludedSearch] = useState("");
   const [trimWhitespace, setTrimWhitespace] = useState(false);
   const [ignoreCase, setIgnoreCase] = useState(false);
+  const [tolerance, setTolerance] = useState("");
 
   const [comparing, setComparing] = useState(false);
   const [progress, setProgress] = useState<ProgressEvent | null>(null);
@@ -96,6 +97,16 @@ function App() {
       setError("請至少選擇一個 Key 欄位，或改用「依資料列順序比對」。");
       return null;
     }
+    const trimmedTolerance = tolerance.trim();
+    let numericTolerance: number | null = null;
+    if (trimmedTolerance !== "") {
+      const parsed = Number(trimmedTolerance);
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        setError("數值誤差容許值必須是大於等於 0 的數字，或留空表示關閉。");
+        return null;
+      }
+      numericTolerance = parsed;
+    }
     const makeParse = (p: FilePanelState) => ({
       encoding: p.encoding,
       delimiter:
@@ -113,6 +124,7 @@ function App() {
       excluded_columns: Array.from(excluded),
       trim_whitespace: trimWhitespace,
       ignore_case: ignoreCase,
+      numeric_tolerance: numericTolerance,
     };
   };
 
@@ -138,6 +150,11 @@ function App() {
 
   const handleCancel = async () => {
     await cancelCompare();
+  };
+
+  const clearResult = () => {
+    setResult(null);
+    setError(null);
   };
 
   const handleExport = async () => {
@@ -263,6 +280,21 @@ function App() {
                 />
                 忽略大小寫
               </label>
+              <label className="tolerance-field">
+                數值誤差容許值（絕對值，留空＝關閉）
+                <input
+                  className="tolerance-input"
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={tolerance}
+                  placeholder="例如 0.01"
+                  onChange={(e) => setTolerance(e.target.value)}
+                />
+              </label>
+              <div className="hint">
+                僅套用於數值欄位；兩邊皆為數字且絕對差在容許值以內視為相同。Key 欄位不受影響。
+              </div>
             </div>
           </div>
 
@@ -294,6 +326,7 @@ function App() {
           <ResultView
             result={result}
             onRecompare={startCompare}
+            onClear={clearResult}
             onExport={handleExport}
             exporting={exporting}
           />

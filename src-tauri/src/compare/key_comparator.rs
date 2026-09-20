@@ -11,7 +11,7 @@ use crate::parser::delimited_parser::check_duplicate_headers;
 use crate::parser::reader::file_name;
 
 use super::difference::{
-    build_key_values, column_differences, format_mode, normalize, ColumnLayout,
+    build_key_values, column_differences, format_mode, values_equal, ColumnLayout,
 };
 use super::duplicate_detector::{key_status_diff, DuplicateTracker};
 use super::key_builder::{settings_from, validate_options, KeyBuilder};
@@ -196,7 +196,7 @@ pub fn compare_key_based(
             for col in &compared_columns {
                 let a_val = layout_a.get(col, a_fields).cloned().unwrap_or_default();
                 let b_val = layout_b.get(col, &fields).cloned().unwrap_or_default();
-                if normalize(&a_val, settings) != normalize(&b_val, settings) {
+                if !values_equal(&a_val, &b_val, settings) {
                     changed.push((col.clone(), a_val, b_val));
                 }
             }
@@ -254,7 +254,7 @@ pub fn compare_key_based(
             for col in &compared_columns {
                 let a_val = layout_a.get(col, a_fields).cloned().unwrap_or_default();
                 let b_val = layout_b.get(col, b_fields).cloned().unwrap_or_default();
-                if normalize(&a_val, settings) != normalize(&b_val, settings) {
+                if !values_equal(&a_val, &b_val, settings) {
                     changed.push((col.clone(), a_val, b_val));
                 }
             }
@@ -334,6 +334,7 @@ pub fn compare_key_based(
         compare_mode: format_mode(opts.comparison_mode).to_string(),
         compare_time: now_string(),
         cancelled: false,
+        numeric_tolerance: opts.numeric_tolerance,
     };
     result.identical = super::summary::is_identical(&result);
     check_cancel(cancel)?;

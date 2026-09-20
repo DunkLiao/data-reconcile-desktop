@@ -227,6 +227,21 @@ body,
   cursor: pointer;
 }
 
+.tolerance-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.tolerance-input {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 13px;
+  width: 100%;
+}
+
 .checkbox-panel .row {
   margin-bottom: 6px;
 }

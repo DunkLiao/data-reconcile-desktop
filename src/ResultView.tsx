@@ -68,11 +68,13 @@ function typeClass(t: DifferenceType): string {
 export function ResultView({
   result,
   onRecompare,
+  onClear,
   onExport,
   exporting,
 }: {
   result: CompareResult;
   onRecompare: () => void;
+  onClear: () => void;
   onExport: () => void;
   exporting: boolean;
 }) {
@@ -135,6 +137,12 @@ export function ResultView({
           <div className="summary-item">
             <div className="label">Key</div>
             <div className="value">{result.key_columns.join(" + ")}</div>
+          </div>
+        )}
+        {result.numeric_tolerance != null && (
+          <div className="summary-item">
+            <div className="label">Numeric Tolerance</div>
+            <div className="value">{`≤ ${result.numeric_tolerance}`}</div>
           </div>
         )}
         <div className="summary-item">
@@ -202,6 +210,9 @@ export function ResultView({
         <span className="hint">顯示 {formatNumber(filtered.length)} / {formatNumber(rows.length)}</span>
         <button className="btn" onClick={onRecompare}>
           重新比較
+        </button>
+        <button className="btn danger" onClick={onClear}>
+          清除結果
         </button>
         <button className="btn primary" onClick={onExport} disabled={exporting}>
           {exporting ? "匯出中..." : "匯出 Excel"}

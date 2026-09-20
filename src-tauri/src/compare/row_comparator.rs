@@ -8,7 +8,7 @@ use crate::parser::decoder::open_delimited_reader;
 use crate::parser::delimited_parser::check_duplicate_headers;
 use crate::parser::reader::file_name;
 
-use super::difference::{column_differences, format_mode, normalize, ColumnLayout};
+use super::difference::{column_differences, format_mode, values_equal, ColumnLayout};
 use super::key_builder::settings_from;
 use super::util::{check_cancel, now_string, ProgressFn};
 
@@ -88,7 +88,7 @@ pub fn compare_row_by_row(
                 for col in &compared_columns {
                     let av = layout_a.get(col, &fa).cloned().unwrap_or_default();
                     let bv = layout_b.get(col, &fb).cloned().unwrap_or_default();
-                    if normalize(&av, settings) != normalize(&bv, settings) {
+                    if !values_equal(&av, &bv, settings) {
                         changed.push((col.clone(), av, bv));
                     }
                 }
@@ -174,6 +174,7 @@ pub fn compare_row_by_row(
         compare_mode: format_mode(opts.comparison_mode).to_string(),
         compare_time: now_string(),
         cancelled: false,
+        numeric_tolerance: opts.numeric_tolerance,
     };
     result.identical = super::summary::is_identical(&result);
     check_cancel(cancel)?;

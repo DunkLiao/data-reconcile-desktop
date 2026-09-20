@@ -35,6 +35,7 @@ export interface CompareOptions {
   excluded_columns: string[];
   trim_whitespace: boolean;
   ignore_case: boolean;
+  numeric_tolerance: number | null;
 }
 
 export type DifferenceType =
@@ -105,6 +106,7 @@ export interface CompareResult {
   compare_mode: string;
   compare_time: string;
   cancelled: boolean;
+  numeric_tolerance: number | null;
 }
 
 export interface ProgressEvent {

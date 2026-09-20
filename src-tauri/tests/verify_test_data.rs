@@ -40,6 +40,7 @@ fn opts(
         excluded_columns: excluded.into_iter().map(String::from).collect(),
         trim_whitespace: false,
         ignore_case: false,
+        numeric_tolerance: None,
     }
 }
 

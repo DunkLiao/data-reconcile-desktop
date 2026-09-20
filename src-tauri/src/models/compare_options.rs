@@ -24,4 +24,9 @@ pub struct CompareOptions {
 
     pub trim_whitespace: bool,
     pub ignore_case: bool,
+
+    /// Unified absolute tolerance applied to numeric value cells. `None` disables
+    /// numeric tolerance (strict string comparison). Key columns are never affected.
+    #[serde(default)]
+    pub numeric_tolerance: Option<f64>,
 }

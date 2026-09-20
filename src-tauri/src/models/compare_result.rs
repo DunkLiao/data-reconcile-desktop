@@ -45,4 +45,7 @@ pub struct CompareResult {
     pub compare_mode: String,
     pub compare_time: String,
     pub cancelled: bool,
+
+    /// The numeric tolerance configured for this comparison (`None` = disabled).
+    pub numeric_tolerance: Option<f64>,
 }
